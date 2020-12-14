@@ -46,52 +46,54 @@ How to use
 First steps
 -----------
 
-The simplest usage of this module looks as follows (using the default, ie, `XML return format <http://www.w3.org/TR/rdf-sparql-XMLres/>`_, and special URI for the
-SPARQL Service)::
-
- from SPARQLWrapper import SPARQLWrapper
- 
- queryString = "SELECT * WHERE { ?s ?p ?o. }"
- sparql = SPARQLWrapper("http://example.org/sparql")
- 
- sparql.setQuery(queryString)
- 
- try :
-    ret = sparql.query()
-    # ret is a stream with the results in XML, see <http://www.w3.org/TR/rdf-sparql-XMLres/>
- except :
-    deal_with_the_exception()
-
-If ``SPARQLWrapper("http://example.org/sparql",returnFormat=SPARQLWrapper.JSON)`` was used, the result would be in
-`JSON format <http://www.w3.org/TR/rdf-sparql-json-res/>`_ instead of XML.
-
-
-SELECT example
---------------
+The simplest usage of this module is as follows in Python pseudo code using the default, i.e. `SPARQL XML return format <http://www.w3.org/TR/rdf-sparql-XMLres/>`_, and a dummy URI for the SPARQL Service):
 
 .. code:: python
 
-   from SPARQLWrapper import SPARQLWrapper, JSON
+    from SPARQLWrapper import SPARQLWrapper
 
-   sparql = SPARQLWrapper("http://dbpedia.org/sparql")
-   sparql.setQuery("""
-       PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
-       SELECT ?label
-       WHERE { <http://dbpedia.org/resource/Asturias> rdfs:label ?label }
-   """)
-   sparql.setReturnFormat(JSON)
-   results = sparql.query().convert()
+    queryString = "SELECT * WHERE { ?s ?p ?o. }"
+    sparql = SPARQLWrapper("http://example.org/sparql")
 
-   for result in results["results"]["bindings"]:
-       print(result["label"]["value"])
-   
-   print('---------------------------')
-   
-   for result in results["results"]["bindings"]:
-       print('%s: %s' % (result["label"]["xml:lang"], result["label"]["value"]))
+    sparql.setQuery(queryString)
 
-ASK example
------------
+    try:
+        ret = sparql.query()
+        # ret is a stream with the results in XML, see <http://www.w3.org/TR/rdf-sparql-XMLres/>
+    except:
+        deal_with_the_exception()
+
+If ``SPARQLWrapper("http://example.org/sparql",returnFormat=SPARQLWrapper.JSON)`` was used, the result would be in the
+`JSON format <http://www.w3.org/TR/rdf-sparql-json-res/>`_ instead of XML.
+
+Working Examples
+----------------
+
+SELECT
+^^^^^^
+Using the JSON return format.
+
+.. code:: python
+
+    from SPARQLWrapper import SPARQLWrapper, JSON
+
+    sparql = SPARQLWrapper("http://dbpedia.org/sparql")
+    sparql.setQuery(
+        """
+        PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+        SELECT ?label
+        WHERE { <http://dbpedia.org/resource/Asturias> rdfs:label ?label }
+        """
+    )
+    sparql.setReturnFormat(JSON)
+    results = sparql.queryAndConvert()
+
+    for r in results["results"]["bindings"]:
+       print('%s: %s' % (r["label"]["xml:lang"], r["label"]["value"]))
+
+ASK
+^^^
+Results as XML:
 
 .. code:: python
 
@@ -103,12 +105,31 @@ ASK example
            <http://dbpedia.org/resource/Asturias> rdfs:label "Asturias"@es
        }    
    """)
-   sparql.setReturnFormat(XML)
+   sparql.setReturnFormat(XML)  # optional
    results = sparql.query().convert()
    print(results.toxml())
 
-CONSTRUCT example
------------------
+Results as JSON:
+
+.. code:: python
+
+    from SPARQLWrapper import SPARQLWrapper, JSON
+
+    sparql = SPARQLWrapper("http://dbpedia.org/sparql")
+    sparql.setQuery("""
+        ASK WHERE {
+            <http://dbpedia.org/resource/Asturias> rdfs:label "Asturias"@es
+        }
+    """)
+    sparql.setReturnFormat(JSON)
+    results = sparql.queryAndConvert()
+    print(results)
+
+CONSTRUCT
+^^^^^^^^^
+In this example, the results from the SPARQL Endpoint are returned as
+an RDFlib `ConjunctiveGraph` object which can then be serialized in any RDF format
+supported by RDFlib.
 
 .. code:: python
 
@@ -132,32 +153,24 @@ CONSTRUCT example
        }
    """)
 
-   sparql.setReturnFormat(RDFXML)
    results = sparql.query().convert()
-   print(results.serialize(format='xml'))
+   print(results.serialize(format="xml").decode())
 
-DESCRIBE example
-----------------
+DESCRIBE
+^^^^^^^^
+As above: results as an RDFlib `Graph`.
 
 .. code:: python
 
-   from SPARQLWrapper import SPARQLWrapper, N3
-   from rdflib import Graph
+   from SPARQLWrapper import SPARQLWrapper
 
    sparql = SPARQLWrapper("http://dbpedia.org/sparql")
+   sparql.setQuery("DESCRIBE <http://dbpedia.org/resource/Asturias>")
+   g = sparql.query().convert()
+   print(g.serialize(format="turtle").decode())
 
-   sparql.setQuery("""
-       DESCRIBE <http://dbpedia.org/resource/Asturias>
-   """)
-
-   sparql.setReturnFormat(N3)
-   results = sparql.query().convert()
-   g = Graph()
-   g.parse(data=results, format="n3")
-   print(g.serialize(format='n3'))
-
-SPARQL UPDATE example
----------------------
+SPARQL UPDATE
+^^^^^^^^^^^^^
 
 .. code:: python
 
@@ -232,14 +245,16 @@ There are two ways to generate this conversion:
 * use ``sparql.queryAndConvert()`` to get the converted result right away if the intermediate stream is not used
 
 
-For example, in the code below::
+For example, in the code below:
 
- try :
-     sparql.setReturnFormat(SPARQLWrapper.JSON)
-     ret = sparql.query()
-     dict = ret.convert()
- except:
-     deal_with_the_exception()
+.. code:: python
+
+     try :
+         sparql.setReturnFormat(SPARQLWrapper.JSON)
+         ret = sparql.query()
+         dict = ret.convert()
+     except:
+         deal_with_the_exception()
 
 
 the value of ``dict`` is a Python dictionary of the query result, based on the `SPARQL Query Results JSON Format <http://www.w3.org/TR/rdf-sparql-json-res/>`_.
@@ -332,7 +347,7 @@ The response body of a successful query operation with a 2XX response is either:
 
 
 The fact is that the **parameter key** for the choice of the **output format** is not defined.
-Virtuoso uses `format`, joseki/fuseki uses `output`, rasqual seems to use `results`, etc...
+Virtuoso uses `format`, Fuseki uses `output`, Rasqual seems to use `results`, etc...
 Also, in some cases HTTP Content Negotiation can/must be used.
 
 
@@ -366,7 +381,7 @@ OpenLink Virtuoso
 
 Fuseki
 ------
-:Website: `Fuseki (formerly there was Joseki) <https://jena.apache.org/documentation/serving_data/>`_
+:Website: `Fuseki (formerly called Joseki) <https://jena.apache.org/documentation/serving_data/>`_
 :Uses: Parameters **and** Content Negotiation.
 :Parameter key: ``format`` or ``output`` (`Fuseki 1 <https://github.com/apache/jena/blob/master/jena-fuseki1/src/main/java/org/apache/jena/fuseki/HttpNames.java>`_, `Fuseki 2 <https://github.com/apache/jena/blob/master/jena-arq/src/main/java/org/apache/jena/riot/web/HttpNames.java>`_).
 :JSON-LD (application/ld+json): supported (in CONSTRUCT and DESCRIBE).
@@ -606,7 +621,7 @@ Blazegraph
 GraphDB
 -------
 :Website: `GraphDB, formerly known as OWLIM (OWLIM-Lite, OWLIM-SE) <http://graphdb.ontotext.com/>`_
-:Documentation: `<http://graphdb.ontotext.com/documentation/free/>`_
+:Documentation: `<https://graphdb.ontotext.com/documentation/free/>`_
 :Uses: Only content negotiation (no URL parameters).
 :Note: If the Accept value is not within the expected ones, the server returns a 406 "No acceptable file format found."
 :JSON-LD (application/ld+json): supported (in CONSTRUCT and DESCRIBE).
@@ -691,7 +706,7 @@ Requirements
 
 The `RDFLib <https://rdflib.readthedocs.io>`_ package is used for RDF parsing.
 
-This package is imported in a lazy fashion, ie, only when needed. Ie, if the user never intends to use the
+This package is imported in a lazy fashion, ie, only when needed. i.e., if the user never intends to use the
 RDF format, the RDFLib package is not imported and the user does not have to install it.
 
 Source code
